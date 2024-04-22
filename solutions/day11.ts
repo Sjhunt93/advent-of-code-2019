@@ -193,12 +193,14 @@ console.log(points.size)
 console.log(xMin, xMax, yMin, yMax)
 for (var y = yMax; y >= yMin; y--) {
     var line = ""
+    const b = Array.from(Array(xMax - xMin).keys()).map(x => (x-xMin).toString() + ":" + y.toString()).map(key => points.get(key) ?? '0').map(key => key ? '#' : ' ').join('');
+    console.log(b);
     for (var x = xMin; x < xMax+1; x++) {
         const key = x.toString() + ":" + y.toString()
         var a = points.get(key) ?? '0'
         line += a == 1 ? '#' : ' '
     }
-    console.log(line)
+    // console.log(line)
 }
 
 
