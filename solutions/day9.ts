@@ -6,26 +6,24 @@ const ins = file.split(',').map(x => parseInt(x));
 
 const POSITION_MODE = 0;
 const IMMEDIATE_MODE = 1;
+const RELATIVE_MODE = 2;
 const INSTRUCTION_SIZE = [0, 4, 4, 2, 2, 0, 0, 4, 4, 2];
 
 class CPU {
     // private rom: number[];
-    // private ram: number[]
-    private ram: Map<number, number>;
-
+    public ram: number[]
     private insPtr: number;
     public A: number;
     public B: number;
     public output: number;
     public flag99: boolean;
     public init: boolean;
-    public rBase: number;
+    public rbase: number;
 
     constructor(rom: number[], a: number, b: number) {
-        this.ram = new Map<number, number>();//[...rom];
-        
+        this.ram = new Array(50000).fill(0)
         for (let index = 0; index < rom.length; index++) {
-            this.ram.set(index, rom[index]);    
+            this.ram[index] = rom[index];
         }
         
         this.insPtr = 0;
@@ -34,72 +32,67 @@ class CPU {
         this.output = 0;
         this.flag99 = false;
         this.init = true;
-        this.rBase = 0;
+        this.rbase = 0;
     }
 
-    read(address: number): number {
-        return this.ram.get(address) ?? 0;
+    memRead(mode: number, param: number) : number {
+        switch (mode) {
+            case POSITION_MODE:
+                return this.ram[this.ram[param]]
+            case IMMEDIATE_MODE:
+                return this.ram[param]
+            case RELATIVE_MODE:
+                return this.ram[this.ram[param] + this.rbase];
+            default:
+                break;
+        }
+        return 0;
     }
-    write(address: number, val: number) {
-        this.ram.set(address, val)
+    // note that des has only 2 modes
+    getAddress(mode: number, param: number) {
+        if (mode == POSITION_MODE) {
+            return this.ram[param]
+        }
+        else {
+            return this.ram[param] + this.rbase
+        }
     }
+
 
     run(): number {
         
-        while (this.ram.get(this.insPtr) != 99) {
-            
-            const opcode = parseInt(this.read(this.insPtr).toString().slice(-1));
-            const modes = Math.floor(this.read(this.insPtr) / 100);
-            const c = modes % 10;
-            const b = Math.floor(modes / 10) % 10;
-            const a = Math.floor(modes / 100);
-            console.log(this.read(this.insPtr), ' # ', opcode, ' -- ', c, b, a);
-            // console.log(this.ram)
-            let param1 = 0;
-            if (c == POSITION_MODE) {
-                param1 = this.read(this.read(this.insPtr + 1))
-            }
-            else if (c == IMMEDIATE_MODE) {
-                param1 = this.read(this.insPtr + 1);
-            }
-            else {
-                param1 = this.read(this.insPtr + 1 + this.rBase);
-            }
+        const outputs: number[] = []
+        while (this.ram[this.insPtr] != 99) {
+            const opcode = parseInt(this.ram[this.insPtr].toString().slice(-1));
+            // modes
+            const modes = Math.floor(this.ram[this.insPtr] / 100);
+            const mode_p1 = modes % 10;
+            const mode_p2 = Math.floor(modes / 10) % 10;
+            const mode_p3 = Math.floor(modes / 100);
 
-            let param2 = 0;
-            if (b == POSITION_MODE) {
-                param2 = this.read(this.read(this.insPtr + 2))
-            }
-            else if (b == IMMEDIATE_MODE) {
-                param2 = this.read(this.insPtr + 2);
-            }
-            else {
-                param2 = this.read(this.insPtr + 2 + this.rBase);
-            }
-            // const param1 = c == POSITION_MODE ? this.ram[this.ram[this.insPtr + 1]] : this.ram[this.insPtr + 1];
-            // const param2 = b == POSITION_MODE ? this.ram[this.ram[this.insPtr + 2]] : this.ram[this.insPtr + 2];
-            const des = this.read(a == 2 ? this.insPtr + 3 + this.rBase : this.insPtr + 3);
-            console.log("-->", param1, param2, des)
+            console.log(this.ram.slice(this.insPtr, this.insPtr+INSTRUCTION_SIZE[opcode]), ' \t# opcode: ', opcode, ' -- parameter modes: ', mode_p1, mode_p2, mode_p3);
+            
+            const param1 = this.memRead(mode_p1, this.insPtr + 1)
+            const param2 = this.memRead(mode_p2, this.insPtr + 2)
+            const des = this.getAddress(mode_p3, this.insPtr + 3)
+
+            console.log("\t parameters",param1, param2, des)
             switch (opcode) {
                 case 1:
-                    this.ram.set(des, param1 + param2)
-                    
+                    this.ram[des] = param1 + param2;
                     break;
                 case 2:
-                    this.ram.set(des, param1 * param2); 
-                    
+                    this.ram[des] = param1 * param2;
                     break;
                 case 3:
-                    this.write(this.read(this.insPtr + 1), this.init ? this.A : this.B)
+                    const address = this.getAddress(mode_p1, this.insPtr + 1)
+                    this.ram[address] = this.init ? this.A : this.B;
                     this.init = false;
                     break;
                 case 4:
-                    // this.output = this.read(this.read(this.insPtr + 1));
-                    this.output = this.read(param1);
-                    // this.insPtr += 2
-                    console.log("---", this.insPtr, this.output);
-                    // break;
-                    return this.output
+                    this.output = param1;
+                    outputs.push(this.output)
+                    break;
                 case 5:
                     this.insPtr = param1 != 0 ? param2 : this.insPtr + 3;
                     break;
@@ -107,32 +100,54 @@ class CPU {
                     this.insPtr = param1 == 0 ? param2 : this.insPtr + 3;
                     break;
                 case 7:
-                    this.write(des, param1 < param2 ? 1 : 0)
-                    
+                    this.ram[des] = param1 < param2 ? 1 : 0;
                     break;
                 case 8:
-                    this.write(des, param1 == param2 ? 1 : 0)
+                    this.ram[des] = param1 == param2 ? 1 : 0;
                     break;
                 case 9:
-                    this.rBase += param1
+                    this.rbase += param1
+                    console.log("rbase is now", this.rbase)
                     break;
                 default:
-                    console.log("jasdkajshdkajshda", opcode)
+                    console.log("jasdkajshdkajshda")
                     break;
             }
+            // 5 and 6 use conditional jumps
             if (!(opcode == 5 || opcode == 6)) {
-                // console.log("++", INSTRUCTION_SIZE[opcode]);
                 this.insPtr += INSTRUCTION_SIZE[opcode];
             }
-            console.log("\n");
+            console.log("\n")
         }
         this.flag99 = true;
+        
         return this.output
     
     }
 
 }
 
-const cpu = new CPU(ins, 1, 1);
-console.log("output:", cpu.run())
+{
+    const file = readFileSync('solutions/day9_test.dat', 'utf-8');
+    const tests = file.split('\n')//.map(x => parseInt(x));
+    console.log(tests)
+    for (const test of tests) {
+        const [values, testval] = test.split("outputs");
+        const tval = parseInt(testval);
+        const rom = values.substring(1, values.length-2).split(",").map(x => parseInt(x))
+        const cpu = new CPU(rom, 1, 1);
+        console.log("running: ", rom, "expecting", tval)
+        assert(cpu.run() == tval)
+    }
+    
+}
+// {
+//     const cpu = new CPU(ins, 1, 1);
+//     console.log("output", cpu.run())
+// }
+
+// {
+//     const cpu = new CPU(ins, 2, 2);
+//     console.log("output", cpu.run())
+// }
 
