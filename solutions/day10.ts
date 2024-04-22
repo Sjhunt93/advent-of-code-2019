@@ -1,9 +1,39 @@
 import { readFileSync } from 'fs';
 import { assert } from 'console';
 
+/*
+    This is a very hard puzzle in part 2.
+    Needed to translate the circle basically phase offset
+
+        B
+    C   *   A
+        D
+
+    The circle rotates anti-clockwise we need clockwise so we can * -1 to create clockwise angles
+
+        B
+    A   *   C
+        D
+
+    We want the list of angles to start from B so we can subtract PI/2
+
+        A
+    D   *   B
+        C
+    
+    This means we cycle from - 3Pi/2 or + PI/2
+
+    Finally to put these in a sorted order we can do
+    if a <= 0:
+        a += 2PI
+
+    Finally we sort out list and then reverse it (I think we reverse this because of the *-1 offset we do after calling atan2)
+    There is a bug where by the first element to get removed is at the end as the angle == 0
+*/
+
+
 const file = readFileSync('solutions/day10.dat', 'utf-8');
 const lines = file.split("\n");
-console.log(lines);
 
 interface Point {
     x: number;
@@ -28,11 +58,6 @@ const getPositionOnCircle = (angleRadians: number, radius: number): Point => {
     const y = radius * Math.sin(angleRadians);
     return { x, y };
 };
-
-// for (let index = 0; index <= 360; index++) {
-//     console.log(index, degreesToRadians(index), getPositionOnCircle(degreesToRadians(index), 10))
-// }
-
 
 
 for (let row = 0; row < lines.length; row++) {
@@ -64,32 +89,26 @@ for (let index = 0; index < astroids.length; index++) {
 }
 console.log(astroids[ri], max)
 
+
+// part 2
 const points = new Map<number, Point>();
 
 let angles_set: Set<number> = new Set();
 for (let j = 0; j < astroids.length; j++) {
-    let angle = atan2ForPoints(astroids[ri].x, astroids[ri].y, astroids[j].x, astroids[j].y) * -1; //; - Math.PI / 2;// + Math.PI * 2//*Math.PI/1.
-    angle -= Math.PI / 2;
-    if (angle < 0) {
-        angle += (Math.PI * 2);// * 3;
+    let angle = atan2ForPoints(astroids[ri].x, astroids[ri].y, astroids[j].x, astroids[j].y) * -1;
+    angle -= Math.PI / 2; // snap to 12 o clock
+    if (angle <= 0) { // offset phase 
+        angle += (Math.PI * 2);
     }
-    // const deg = radiansToDegrees(angle-Math.PI/2)+270;
-    // const deg = radiansToDegrees(angle+Math.PI/2)-270;
-    // const deg = angle;
-    // angle = angle % Math.PI
-    // if (angle < 0) {
-    //     angle += Math.PI
-    // }
-
     angles_set.add(angle);   
-    // // results.add(angle)
     points.set(angle, astroids[j])
 }
 
 let angles = Array.from(angles_set);
-angles.sort()//((a, b) => a - b);
+angles.sort()
 angles = angles.reverse()
-// // { x: 8, y: 2
+
+
 var i = 0;
 for (let item of angles) {
     console.log(i, item, radiansToDegrees(item), points.get(item));
@@ -102,12 +121,7 @@ console.log(angles[199], points.get(angles[199]))
 console.log(astroids[ri])
 console.log("-------")
 
-let angle = atan2ForPoints(astroids[ri].x, astroids[ri].y, 20, 13);// + Math.PI * 2//*Math.PI/1.
-console.log(angle)
 
-
-// const x = atan2ForPoints(0,0, 0, 15)-Math.PI/2
-// console.log(x, radiansToDegrees(x))
 // console.log(atan2ForPoints(0,0, 0, -15), radiansToDegrees(atan2ForPoints(0,0, 0, -15)))
 
 // console.log(atan2ForPoints(0,0, 15, 0), radiansToDegrees(atan2ForPoints(0,0, 15, 0)))
