@@ -11,11 +11,6 @@ interface Point {
     z: number;
 }
 
-const current: Point = {
-    x: 0,
-    y: 0,
-    z: 0
-};
 
 const vPoint = (a: number, b: number) => {
     if (a == b) {return 0;}
@@ -49,7 +44,7 @@ for (let l of lines) {
 console.log(planets);
 
 // part 1
-for (let time = 0; time < 1000 /*un comment here*/; time++) {
+for (let time = 0; time < 0 /*un comment here*/; time++) {
     console.log(planets[0].x)
     for (let i = 0; i < planets.length; i++) {
         for (let j = 0; j < planets.length; j++) {
@@ -67,4 +62,60 @@ for (let time = 0; time < 1000 /*un comment here*/; time++) {
     }
     console.log(time, totEng)
 }
+// part 2
 
+
+
+const res: number[] = []
+for (let axis of ["x", "y", "z"]) {
+    var count = 0;
+    const seen = new Set()
+    while (true) {
+        var key = "";
+        for (let i = 0; i < planets.length; i++) {
+            
+            key += planets[i][axis].toString() + ":" + velocities[i][axis].toString() + "~";
+        }
+        if (seen.has(key)) {
+            console.log(axis, count)
+            res.push(count)
+            break;
+        }
+        else {
+            seen.add(key)
+        }
+
+        for (let i = 0; i < planets.length; i++) {
+            for (let j = 0; j < planets.length; j++) {
+                if (i == j) {continue;}
+                const grav = calcGravity(planets[i], planets[j])
+                // console.log(i, j, grav)
+                velocities[i] = sumPoints(velocities[i], grav)
+            }
+        }
+        for (let i = 0; i < planets.length; i++) {
+            planets[i] = sumPoints(planets[i], velocities[i])
+        }
+
+        count += 1
+        console.log(count, axis, key)
+    }
+}
+
+// taken from GPT :D 
+function gcd(a: bigint, b: bigint): bigint {
+    // Euclidean algorithm to find the greatest common divisor
+    while (b !== BigInt(0)) {
+        const temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+function lcm(a: bigint, b: bigint): bigint {
+
+    return (a * b) / gcd(a, b);
+}
+console.log(res)
+console.log(lcm(BigInt(res[0]), lcm(BigInt(res[1]), BigInt(res[2]))))
