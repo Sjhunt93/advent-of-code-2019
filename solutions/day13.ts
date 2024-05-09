@@ -71,12 +71,12 @@ class CPU {
             const mode_p2 = Math.floor(modes / 10) % 10;
             const mode_p3 = Math.floor(modes / 100);
 
-            // console.log(this.ram.slice(this.insPtr, this.insPtr+INSTRUCTION_SIZE[opcode]), ' \t# opcode: ', opcode, ' -- parameter modes: ', mode_p1, mode_p2, mode_p3);
+            // console.log('# opcode: ', opcode, ' -- parameter modes: ', mode_p1, mode_p2, mode_p3, this.ram.slice(this.insPtr, this.insPtr+INSTRUCTION_SIZE[opcode]));
             
             const param1 = this.memRead(mode_p1, this.insPtr + 1)
             const param2 = this.memRead(mode_p2, this.insPtr + 2)
             const des = this.getAddress(mode_p3, this.insPtr + 3)
-
+            
             // console.log("\t parameters",param1, param2, des)
             switch (opcode) {
                 case 1:
@@ -95,16 +95,16 @@ class CPU {
                     outputs.push(this.output)
                     break;
                     
-                case 5:
+                case 5: //jump if true
                     this.insPtr = param1 != 0 ? param2 : this.insPtr + 3;
                     break;
-                case 6:
+                case 6: //jump if false
                     this.insPtr = param1 == 0 ? param2 : this.insPtr + 3;
                     break;
-                case 7:
+                case 7: // less than
                     this.ram[des] = param1 < param2 ? 1 : 0;
                     break;
-                case 8:
+                case 8: // equal
                     this.ram[des] = param1 == param2 ? 1 : 0;
                     break;
                 case 9:
@@ -146,11 +146,7 @@ let angle = 0
 const points = new Map<string, number >();
 points.set("0:0", 1)
 
-const checker = () : number => {
-    // const key = current.x.toString() + ":" + current.y.toString()
-    // return points.get(key) ?? 0;
-    return 0;
-}
+
 
 
 
@@ -174,20 +170,74 @@ var yMax = 0;
 // part 2
 var count = 0;
 ins[0] = 2;
+
+
+const memAddressPaddleX = 382;
+const memAddressPaddleY = 383;
+const memAddressPaddle = 384;
+
+var ballXV = 0;
+var ballYV = 0;
+var ballXPos = 0;
+var ballYPos = 0;
+
+var score = 0;
+
+var paddleX = 0;
+var ballX = 0;
+
+const checker = () : number => {
+    // const key = current.x.toString() + ":" + current.y.toString()
+    // return points.get(key) ?? 0;
+    if (ballX > paddleX) {
+        return 1;
+    }
+    else if (ballX < paddleX) {
+        return -1;
+    }
+    else {
+        return 0;
+    }
+    
+}
+
 const cpu = new CPU(ins, checker);
+
+
+
 
 while (!cpu.flag99) {
     const [x, y, tile] = cpu.run()
     // console.log("outputs", x, y, tile)
-    if (tile == 3) {
-        console.log("_", x, y)
-    }
-    if (tile == 4) {
-        // count ++;
-        console.log(x, y)
-    }
     if (x == -1 && y == 0) {
-        // console.log(tile, cpu.insPtr)
+        // score += tile;
+        score = tile
     }
+    else if (tile == 3) {
+        console.log("paddle: ", x, y)
+        // console.log("mem: ", cpu.ram[memAddressPaddleX], cpu.ram[392])
+        paddleX = x;
+    }
+    else if (tile == 4) {
+        // count ++;
+        console.log("ball: ", x, y)
+                // hackerman ----
+        ballXV = (x > ballXPos) ? 1 : -1;
+        ballYV = (y > ballYPos) ? 1 : -1;
+        ballXPos = x;
+        ballYPos = y;
+        ballX = x;
+        // console.log("target", (18-y), "will cross x at: ", x-(ballXV * (18-y)))
+        // if (y == 17) {
+        //     cpu.ram[392] = x + ballXV;
+        //     console.log("mem: ", cpu.ram[memAddressPaddleX], cpu.ram[memAddressPaddleY])
+        // }
+
+
+        if (y == 18) {
+            console.log("....")
+        }
+    }
+
 }
-console.log(count)
+console.log(score)

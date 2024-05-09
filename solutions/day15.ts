@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
-import { assert } from 'console';
+import { assert, time, timeEnd, timeLog } from 'console';
 
-const file = readFileSync('solutions/day11.dat', 'utf-8');
+const file = readFileSync('solutions/day15.dat', 'utf-8');
 const ins = file.split(',').map(x => parseInt(x));
 
 const POSITION_MODE = 0;
@@ -12,7 +12,7 @@ const INSTRUCTION_SIZE = [0, 4, 4, 2, 2, 0, 0, 4, 4, 2];
 class CPU {
     // private rom: number[];
     public ram: number[]
-    private insPtr: number;
+    public insPtr: number;
     public A: number;
     public B: number;
     public output: number;
@@ -71,12 +71,12 @@ class CPU {
             const mode_p2 = Math.floor(modes / 10) % 10;
             const mode_p3 = Math.floor(modes / 100);
 
-            console.log(this.ram.slice(this.insPtr, this.insPtr+INSTRUCTION_SIZE[opcode]), ' \t# opcode: ', opcode, ' -- parameter modes: ', mode_p1, mode_p2, mode_p3);
+            // console.log('# opcode: ', opcode, ' -- parameter modes: ', mode_p1, mode_p2, mode_p3, this.ram.slice(this.insPtr, this.insPtr+INSTRUCTION_SIZE[opcode]));
             
             const param1 = this.memRead(mode_p1, this.insPtr + 1)
             const param2 = this.memRead(mode_p2, this.insPtr + 2)
             const des = this.getAddress(mode_p3, this.insPtr + 3)
-
+            
             // console.log("\t parameters",param1, param2, des)
             switch (opcode) {
                 case 1:
@@ -95,34 +95,32 @@ class CPU {
                     outputs.push(this.output)
                     break;
                     
-                case 5:
+                case 5: //jump if true
                     this.insPtr = param1 != 0 ? param2 : this.insPtr + 3;
                     break;
-                case 6:
+                case 6: //jump if false
                     this.insPtr = param1 == 0 ? param2 : this.insPtr + 3;
                     break;
-                case 7:
+                case 7: // less than
                     this.ram[des] = param1 < param2 ? 1 : 0;
                     break;
-                case 8:
+                case 8: // equal
                     this.ram[des] = param1 == param2 ? 1 : 0;
                     break;
                 case 9:
                     this.rbase += param1
-                    console.log("rbase is now", this.rbase)
                     break;
                 default:
-                    console.log("jasdkajshdkajshda")
                     break;
             }
             // 5 and 6 use conditional jumps
             if (!(opcode == 5 || opcode == 6)) {
                 this.insPtr += INSTRUCTION_SIZE[opcode];
             }
-            if (outputs.length == 2) {
+            if (outputs.length == 1) {
                 return outputs;
             }
-            console.log("\n")
+            // console.log("\n")
         }
         this.flag99 = true;
         
@@ -141,66 +139,27 @@ const current: Point = {
     x: 0,
     y: 0
 };
-let angle = 0
+
 const points = new Map<string, number >();
-points.set("0:0", 1)
+
+const position: Point = {x:0, y:0};
+const velocity: Point = {x:1, y:0};
 
 const checker = () : number => {
-    const key = current.x.toString() + ":" + current.y.toString()
-    return points.get(key) ?? 0;
+    return 2;
 }
-
-
-
-var xMin = 0;
-var xMax = 0;
-var yMin = 0;
-var yMax = 0;
 
 const cpu = new CPU(ins, checker);
+
+
 while (!cpu.flag99) {
-    const [colour, ang] = cpu.run()
-    console.log("outputs", colour, ang)
-    angle = (angle + ((ang == 0)? -1 : 1)) % 4;
-    if (angle < 0) {
-        angle += 4
+    const [r] = cpu.run()
+    console.log(r)
+    if (r == 1) {
+        position.x += velocity.x
+        position.y += velocity.y
     }
-    const key = current.x.toString() + ":" + current.y.toString()
-    points.set(key, colour)
-    switch (angle) {
-        case 0: //up
-            current.y += 1
-            break;
-        case 1: //right
-            current.x += 1
-            break
-        case 2: //down
-            current.y -= 1
-            break
-        case 3: //right
-            current.x -= 1
-            break
-        default:
-            break;
+    if (r == 0) {
+        break;
     }
-    xMin = current.x < xMin ? current.x : xMin;
-    xMax = current.x > xMax ? current.x : xMax;
-    yMin = current.y < yMin ? current.y : yMin;
-    yMax = current.y > yMax ? current.y : yMax;
 }
-console.log(points.size)
-
-console.log(xMin, xMax, yMin, yMax)
-for (var y = yMax; y >= yMin; y--) {
-    var line = ""
-    // const b = Array.from(Array(xMax - xMin).keys()).map(x => (x-xMin).toString() + ":" + y.toString()).map(key => points.get(key) ?? '0').map(key => key == 1 ? '#' : ' ').join('');
-    // console.log(b);
-    for (var x = xMin; x < xMax+1; x++) {
-        const key = x.toString() + ":" + y.toString()
-        var a = points.get(key) ?? '0'
-        line += a == 1 ? '#' : ' '
-    }
-    // console.log(line)
-}
-
-
